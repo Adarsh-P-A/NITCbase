@@ -56,8 +56,9 @@ void printSchemas() {
 int main(int argc, char *argv[]) {
   /* Initialize the Run Copy of Disk */
   Disk disk_run;
-  // StaticBuffer buffer;
-  // OpenRelTable cache;
+  // Initialise a buffer with 32*2048 bytes
+  StaticBuffer buffer;
+  OpenRelTable cache;
   printSchemas();
   return 0;
 
