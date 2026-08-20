@@ -34,7 +34,16 @@ int RecBuffer::getRecord(union Attribute *rec, int slotNum) {
     struct HeadInfo head;
 
     // use getHeader to assign head
-    BlockBuffer::getHeader(&head);
+    // Properly check error return status
+    int ret = BlockBuffer::getHeader(&head);
+    if (ret != SUCCESS) {
+        return ret;
+    }
+    
+    // Bounds check slotNum against valid slot range
+    if (slotNum < 0 || slotNum >= head.numSlots) {
+        return E_OUTOFBOUND;
+    }
     
     // attrCount for finding recordSize & slotCount is the length of slotmap
     int attrCount = head.numAttrs;
@@ -42,7 +51,7 @@ int RecBuffer::getRecord(union Attribute *rec, int slotNum) {
 
     // Instead of reading directly from disk, use a function instead
     unsigned char *bufferPtr; 
-    int ret = loadBlockAndGetBufferPtr(&bufferPtr);
+    ret = loadBlockAndGetBufferPtr(&bufferPtr);
     if(ret != SUCCESS) {
         return ret; // If it is error, return as it is
     }
@@ -76,3 +85,46 @@ int BlockBuffer::loadBlockAndGetBufferPtr(unsigned char **bufferPtr) {
     return SUCCESS;
 }
 
+int RecBuffer::getSlotMap(unsigned char *slotMap) {
+    // load into buffer if not exist
+    unsigned char *bufferPtr;
+    int status = loadBlockAndGetBufferPtr(&bufferPtr);
+    if(status != SUCCESS) {
+        return status;
+    }
+
+    // get headerInfo
+    struct HeadInfo head;
+    status = getHeader(&head);
+    if(status != SUCCESS) {
+        return status;
+    }
+
+    // go to offset of slotMap
+    int slotCount = head.numSlots;
+    unsigned char *slotMapInBuffer = bufferPtr + HEADER_SIZE;
+    
+    // copy slotmap to the argument variable
+    memcpy(slotMap, slotMapInBuffer, slotCount);
+
+    // return success
+    return SUCCESS;
+}
+
+// compare two attributes and return -1, 0 or 1
+int compareAttrs(union Attribute attr1, union Attribute attr2, int attrType) {
+    double diff;
+    if(attrType == STRING) {
+        diff = strcmp(attr1.sVal, attr2.sVal);
+    }
+    else {
+        diff = attr1.nVal - attr2.nVal;
+    }
+
+    if(diff < 0) 
+        { return -1;}
+    else if(diff > 0) 
+        { return 1;}
+    else 
+        { return 0;}
+}
