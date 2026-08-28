@@ -59,7 +59,5 @@ int main(int argc, char *argv[]) {
   // Initialise a buffer with 32*2048 bytes
   StaticBuffer buffer;
   OpenRelTable cache;
-  
   return FrontendInterface::handleFrontend(argc, argv);
-
 }
