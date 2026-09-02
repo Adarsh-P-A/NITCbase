@@ -1,4 +1,5 @@
 #include "BlockBuffer.h"
+#include "StaticBuffer.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -71,12 +72,23 @@ int BlockBuffer::loadBlockAndGetBufferPtr(unsigned char **bufferPtr) {
     // check if the the block is already present in the buffer
     int bufferNum = StaticBuffer::getBufferNum(this->blockNum);
     if(bufferNum == E_BLOCKNOTINBUFFER) {
+        // get free buffer and read the block into it - the getFreeBuffer function will increment timestamp
         bufferNum = StaticBuffer::getFreeBuffer(this->blockNum);
 
         if(bufferNum == E_OUTOFBOUND) {
             return E_OUTOFBOUND;
         }
         Disk::readBlock(StaticBuffer::blocks[bufferNum], this->blockNum);
+    } 
+    else {
+        // here i have to manually increment all the timestamps
+        for(int bufferIndex=0; bufferIndex < BUFFER_CAPACITY; bufferIndex++) {
+            if(StaticBuffer::metainfo[bufferIndex].free == false) {
+                StaticBuffer::metainfo[bufferIndex].timeStamp++;
+            }
+        }
+        // even if it was loaded earlier, timeStamp is set to 0 because it is the Least Recently Used
+        StaticBuffer::metainfo[bufferNum].timeStamp = 0;
     }
 
     // bufferPtr stores the pointer to block in buffer
@@ -127,4 +139,36 @@ int compareAttrs(union Attribute attr1, union Attribute attr2, int attrType) {
         { return 1;}
     else 
         { return 0;}
+}
+
+int RecBuffer::setRecord(union Attribute *rec, int slotNum) {
+    unsigned char *bufferPtr;
+    // get the starting address of the buffer containing the block
+    int ret = loadBlockAndGetBufferPtr(&bufferPtr);
+    
+    if(ret != SUCCESS) {
+        return ret;
+    }
+
+    HeadInfo head;
+    this->getHeader(&head);
+
+    int noOfAttrs = head.numAttrs;
+    int noOfSlots = head.numSlots;
+
+    if(slotNum < 0 || slotNum >= noOfSlots) {
+        return E_OUTOFBOUND;
+    }
+
+    // calculate the pointer pointing to the record within the block
+    int recordSize = noOfAttrs * ATTR_SIZE;
+    int offset = HEADER_SIZE + noOfSlots + (slotNum*recordSize);
+    unsigned char *recPtr = bufferPtr + offset;
+
+    // copy the argument record to the record in buffer
+    memcpy(recPtr, rec, recordSize);
+
+    StaticBuffer::setDirtyBit(this->blockNum);
+
+    return SUCCESS;
 }
