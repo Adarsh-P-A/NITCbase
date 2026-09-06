@@ -153,14 +153,14 @@ int regexMatchAndExecute(const string input_command) {
 		}
 
 	} else if (regex_match(input_command, dump_rel)) {
-		dump_relcat();
-		cout << "Dumped relation catalog to " << OUTPUT_FILES_PATH << "relation_catalog" << endl;
+		int ret = dump_relcat();
+		if (ret == SUCCESS) cout << "Dumped relation catalog to " << OUTPUT_FILES_PATH << "relation_catalog" << endl;
 	} else if (regex_match(input_command, dump_attr)) {
-		dump_attrcat();
-		cout << "Dumped attribute catalog to " << OUTPUT_FILES_PATH << "attribute_catalog" << endl;
+		int ret = dump_attrcat();
+		if (ret == SUCCESS) cout << "Dumped attribute catalog to " << OUTPUT_FILES_PATH << "attribute_catalog" << endl;
 	} else if (regex_match(input_command, dump_bmap)) {
-		dumpBlockAllocationMap();
-		cout << "Dumped block allocation map to " << OUTPUT_FILES_PATH << "block_allocation_map" << endl;
+		int ret = dumpBlockAllocationMap();
+		if (ret == SUCCESS) cout << "Dumped block allocation map to " << OUTPUT_FILES_PATH << "block_allocation_map" << endl;
 	} else if (regex_match(input_command, list_all)) {
 		ls();
 		char rel[ATTR_SIZE], attr[ATTR_SIZE];

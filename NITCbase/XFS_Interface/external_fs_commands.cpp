@@ -19,13 +19,17 @@ void writeHeaderToFile(FILE *fp_export, HeadInfo h);
 void writeAttributeToFile(FILE *fp, Attribute attribute, int type, int lastLineFlag);
 
 
-void dump_relcat() {
+int dump_relcat() {
 	string relation_catalog = "relation_catalog";
 	string filePath = OUTPUT_FILES_PATH + relation_catalog;
 	char fileName[filePath.length() + 1];
 	string_to_char_array(filePath, fileName, filePath.length() + 1);
 
 	FILE *fp_export = fopen(fileName, "w");
+	if (!fp_export) {
+		cout << "Failed to open " << fileName << " for writing. Ensure directory " << OUTPUT_FILES_PATH << " exists." << endl;
+		return FAILURE;
+	}
 	Attribute relCatRecord[ATTR_SIZE];
 
 	HeadInfo headInfo;
@@ -64,15 +68,20 @@ void dump_relcat() {
 	}
 
 	fclose(fp_export);
+	return SUCCESS;
 }
 
-void dump_attrcat() {
+int dump_attrcat() {
 	string attribute_catalog = "attribute_catalog";
 	string filePath = OUTPUT_FILES_PATH + attribute_catalog;
 	char fileName[filePath.length() + 1];
 	string_to_char_array(filePath, fileName, filePath.length() + 1);
 
 	FILE *fp_export = fopen(fileName, "w");
+	if (!fp_export) {
+		cout << "Failed to open " << fileName << " for writing. Ensure directory " << OUTPUT_FILES_PATH << " exists." << endl;
+		return FAILURE;
+	}
 
 	Attribute attrCatRecord[ATTR_SIZE];
 	int attrCatBlock = ATTRCAT_BLOCK;
@@ -115,10 +124,15 @@ void dump_attrcat() {
 		attrCatBlock = headInfo.rblock;
 	}
 	fclose(fp_export);
+	return SUCCESS;
 }
 
-void dumpBlockAllocationMap() {
+int dumpBlockAllocationMap() {
 	FILE *disk = fopen(&DISK_PATH[0], "rb+");
+	if (!disk) {
+		cout << "Failed to open disk file " << DISK_PATH << endl;
+		return FAILURE;
+	}
 	fseek(disk, 0, SEEK_SET);
 	unsigned char blockAllocationMap[4 * BLOCK_SIZE];
 	fread(blockAllocationMap, 4 * BLOCK_SIZE, 1, disk);
@@ -134,6 +148,10 @@ void dumpBlockAllocationMap() {
 	string_to_char_array(filePath, fileName, filePath.length() + 1);
 
 	FILE *fp_export = fopen(fileName, "w");
+	if (!fp_export) {
+		cout << "Failed to open " << fileName << " for writing. Ensure directory " << OUTPUT_FILES_PATH << " exists." << endl;
+		return FAILURE;
+	}
 
 	for (blockNum = 0; blockNum < 4; blockNum++) {
 		fputs("Block ", fp_export);
@@ -160,6 +178,7 @@ void dumpBlockAllocationMap() {
 	}
 
 	fclose(fp_export);
+	return SUCCESS;
 }
 
 void ls() {
