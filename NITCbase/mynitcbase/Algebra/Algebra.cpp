@@ -112,3 +112,70 @@ int Algebra::select(char srcRel[ATTR_SIZE], char targetRel[ATTR_SIZE], char attr
     return SUCCESS;
 
 }
+
+int Algebra::insert(char relName[ATTR_SIZE], int nAttrs, char record[][ATTR_SIZE]) {
+    if (!strcmp(relName, RELCAT_RELNAME) || !strcmp(relName, ATTRCAT_RELNAME))
+        return E_NOTPERMITTED;
+
+    int relId = OpenRelTable::getRelId(relName);
+    if (relId == E_RELNOTOPEN)
+        return relId;
+
+    RelCatEntry relCatBuf;
+    RelCacheTable::getRelCatEntry(relId, &relCatBuf);
+
+    // If no. of attributes mismatch, throw error
+    if (relCatBuf.numAttrs != nAttrs)
+        return E_NATTRMISMATCH;
+
+    Attribute recordValues[nAttrs];
+
+    for (int i = 0; i < nAttrs; i++) {
+        // get the attrCat entry for the i'th attribute from the attrCache
+        AttrCatEntry attrCatBuf;
+        AttrCacheTable::getAttrCatEntry(relId, i, &attrCatBuf);
+
+        int type = attrCatBuf.attrType;
+
+        if (type == NUMBER) {
+            if (isNumber(record[i])) {
+                recordValues[i].nVal = atof(record[i]);
+            } else {
+                return E_ATTRTYPEMISMATCH;
+            }
+        } else if (type == STRING) {
+            strcpy(recordValues[i].sVal, record[i]);
+        }
+    }
+
+    // insert the record by calling BlockAccess::insert()
+    int ret = BlockAccess::insert(relId, recordValues);
+    return ret;
+}
+
+int RecBuffer::setSlotMap(unsigned char *slotMap) {
+    unsigned char *bufferPtr;
+
+    int ret = BlockBuffer::loadBlockAndGetBufferPtr(&bufferPtr); // Load block into buffer if not present already
+    if (ret != SUCCESS)
+        return ret;
+
+    // Get the block header
+    struct HeadInfo head;
+    BlockBuffer::getHeader(&head);
+
+    // Copy the contents of the argument `slotMap` to the buffer replacing the existing slotmap
+    int numSlots = head.numSlots;
+    memcpy(bufferPtr + HEADER_SIZE, slotMap, numSlots);
+
+    // update dirty bit in StaticBuffer
+    ret = StaticBuffer::setDirtyBit(this->blockNum);
+    if (ret != SUCCESS)
+        return ret;
+
+    return SUCCESS;
+}
+
+// This will be used when a new block is assigned from Constructor 2 using block type.
+// The new blockNum is unknown. So, call this method to get the new blockNum.
+int BlockBuffer::getBlockNum() { return this->blockNum; }

@@ -1,9 +1,17 @@
 #include "StaticBuffer.h"
+#include <cstring>
 
 unsigned char StaticBuffer::blocks[BUFFER_CAPACITY][BLOCK_SIZE];
 struct BufferMetaInfo StaticBuffer::metainfo[BUFFER_CAPACITY];
 
+unsigned char StaticBuffer::blockAllocMap[DISK_BLOCKS];
+
 StaticBuffer::StaticBuffer() {
+    // copy blockAllocMap from disk to buffer (using readBlock() of disk)
+    for(int i=0; i<BLOCK_ALLOCATION_MAP_SIZE; i++) {
+        Disk::readBlock(blockAllocMap + i*BLOCK_SIZE, i);
+    }
+
     // all entries in buffer is free initially
     for(int bufferIndex=0; bufferIndex < BUFFER_CAPACITY; bufferIndex++) {
         metainfo[bufferIndex].free = true;
@@ -15,6 +23,11 @@ StaticBuffer::StaticBuffer() {
 
 // destructor with writeback feature will be implemented later
 StaticBuffer::~StaticBuffer() {
+    // copy blockAllocMap from buffer to disk (using writeBlock() of disk)
+    for(int i=0; i<BLOCK_ALLOCATION_MAP_SIZE; i++) {
+        Disk::writeBlock(blockAllocMap + i*BLOCK_SIZE, i);
+    }
+
     // write back the modified buffer to disk
     for(int bufferIndex = 0; bufferIndex < BUFFER_CAPACITY; bufferIndex++) {
         if(metainfo[bufferIndex].free == false && metainfo[bufferIndex].dirty == true) {

@@ -263,11 +263,29 @@ int OpenRelTable::closeRel(int relId) {
         return E_RELNOTOPEN;
     }
 
+    // write back if dirty
+    if (RelCacheTable::relCache[relId] != nullptr && RelCacheTable::relCache[relId]->dirty) {
+        // Get the Relation Catalog entry from relCache
+        RelCatEntry relCatEntry;
+        RelCacheTable::getRelCatEntry(relId, &relCatEntry);
+
+        RecId recId = RelCacheTable::relCache[relId]->recId;
+
+        // Convert it to a record using RelCacheTable::relCatEntryToRecord()
+        Attribute record[RELCAT_NO_ATTRS];
+        RelCacheTable::relCatEntryToRecord(&relCatEntry, record);
+
+        // Write back to the buffer
+        RecBuffer relCatBlock(recId.block);
+        relCatBlock.setRecord(record, recId.slot);
+    }
+    
     // release the memory allocated in rel cat for this relation
     if(RelCacheTable::relCache[relId] != nullptr) {
         delete RelCacheTable::relCache[relId];
         RelCacheTable::relCache[relId] = nullptr;
     }
+
 
     // release memory allocated for each node in the attr cache linked list
     AttrCacheEntry *current = AttrCacheTable::attrCache[relId];
@@ -286,5 +304,3 @@ int OpenRelTable::closeRel(int relId) {
 
     return SUCCESS;
 }
-
-// BUG: in closing relation
