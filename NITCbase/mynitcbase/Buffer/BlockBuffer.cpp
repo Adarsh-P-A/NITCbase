@@ -44,6 +44,10 @@ int BlockBuffer::getHeader(struct HeadInfo *head) {
 
 }
 
+// This will be used when a new block is assigned from Constructor 2 using block type.
+// The new blockNum is unknown. So, call this method to get the new blockNum.
+int BlockBuffer::getBlockNum() { return this->blockNum; }
+
 int RecBuffer::getRecord(union Attribute *rec, int slotNum) {
     struct HeadInfo head;
 
@@ -136,6 +140,30 @@ int RecBuffer::getSlotMap(unsigned char *slotMap) {
     return SUCCESS;
 }
 
+int RecBuffer::setSlotMap(unsigned char *slotMap) {
+    unsigned char *bufferPtr;
+
+    int ret = BlockBuffer::loadBlockAndGetBufferPtr(&bufferPtr); // Load block into buffer if not present already
+    if (ret != SUCCESS)
+        return ret;
+
+    // Get the block header
+    struct HeadInfo head;
+    BlockBuffer::getHeader(&head);
+
+    // Copy the contents of the argument `slotMap` to the buffer replacing the existing slotmap
+    int numSlots = head.numSlots;
+    memcpy(bufferPtr + HEADER_SIZE, slotMap, numSlots);
+
+    // update dirty bit in StaticBuffer
+    ret = StaticBuffer::setDirtyBit(this->blockNum);
+    if (ret != SUCCESS)
+        return ret;
+
+    return SUCCESS;
+}
+
+
 // compare two attributes and return -1, 0 or 1
 int compareAttrs(union Attribute attr1, union Attribute attr2, int attrType) {
     double diff;
@@ -213,6 +241,8 @@ int BlockBuffer::setHeader(struct HeadInfo *head) {
     return SUCCESS;
 }
 
+// setBlockType is a separate function because block type is stored in two places
+// 1. Header of each block, 2. Block allocation map
 int BlockBuffer::setBlockType(int blockType) {
     unsigned char *bufferPtr;
 
@@ -286,3 +316,4 @@ void BlockBuffer::releaseBlock() {
     this->blockNum = INVALID_BLOCKNUM;
 
 }
+

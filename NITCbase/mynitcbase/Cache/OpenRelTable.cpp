@@ -139,7 +139,7 @@ OpenRelTable::~OpenRelTable() {
         free(RelCacheTable::relCache[i]);
     }
 
-    // I can use the same loop for attribute cache table
+    // I can use the same loop idea for attribute cache table
     for(int i=RELCAT_RELID; i<=ATTRCAT_RELID; i++) {
 
         AttrCacheEntry *curr = AttrCacheTable::attrCache[i];
