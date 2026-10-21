@@ -1,5 +1,6 @@
 #include "OpenRelTable.h"
-#include <stdio.h>
+#include "AttrCacheTable.h"
+#include "RelCacheTable.h"
 #include <cstring>
 #include <stdlib.h>
 
@@ -108,25 +109,61 @@ OpenRelTable::OpenRelTable() {
 }
 
 OpenRelTable::~OpenRelTable() {
-    // free the memory allocated for Relation cache 
-    for(int i=0; i<MAX_OPEN; i++) {
-        if(RelCacheTable::relCache[i] != nullptr) {
-            delete RelCacheTable::relCache[i];
-            RelCacheTable::relCache[i] = nullptr;
+    
+    // close all open relations
+    for(int i=2; i < MAX_OPEN; i++) {
+        if(!tableMetaInfo[i].free) {
+            OpenRelTable::closeRel(i);
         }
     }
 
-    //free the memory allocated for Attribute cache
-    for(int i=0; i<MAX_OPEN; i++) {
-        if(AttrCacheTable::attrCache[i] != nullptr) {
-            AttrCacheEntry *curr = AttrCacheTable::attrCache[i];
-            while(curr != nullptr) {
-                AttrCacheEntry *next = curr->next;
-                delete curr;
-                curr = next;
-            }
+    // Loop is safe because only thing that differs is RELID. note that RELCAT_NO_ATTRS = ATTRCAT_NO_ATTRS = 6
+    for(int i=RELCAT_RELID; i<=ATTRCAT_RELID; i++) {
+
+            if(RelCacheTable::relCache[i]->dirty) {
+
+            RelCatEntry relCatEntry;
+            RelCacheTable::getRelCatEntry(i, &relCatEntry);
+
+            Attribute record[6];
+            RelCacheTable::relCatEntryToRecord(&relCatEntry, record);
+
+            RecId recId = RelCacheTable::relCache[i]->recId;
+            RecBuffer relCatBlock(recId.block);
+
+            //write back to buffer
+            relCatBlock.setRecord(record, recId.slot);
         }
-        AttrCacheTable::attrCache[i] = nullptr;
+
+        //free the dynamic memory allocated for this RelCacheEntry
+        free(RelCacheTable::relCache[i]);
+    }
+
+    // I can use the same loop for attribute cache table
+    for(int i=RELCAT_RELID; i<=ATTRCAT_RELID; i++) {
+
+        AttrCacheEntry *curr = AttrCacheTable::attrCache[i];
+        AttrCacheEntry *next = nullptr;
+
+        // There will be 6 nodes in linked list
+        for(int index=0; index < 6; index++) {
+
+            if(curr->dirty) {
+                AttrCatEntry attrCatEntry;
+                AttrCacheTable::getAttrCatEntry(i, index, &attrCatEntry);
+
+                Attribute record[6];
+                AttrCacheTable::attrCatEntryToRecord(&attrCatEntry, record);
+
+                RecId recId = curr->recId;
+                RecBuffer attrCatBlock(recId.block);
+
+                attrCatBlock.setRecord(record, recId.block);
+            }
+            next = curr->next;
+            free(curr);
+            curr = next;
+        }
     }
 }
 

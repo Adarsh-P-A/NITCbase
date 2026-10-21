@@ -266,3 +266,23 @@ int BlockBuffer::getFreeBlock(int blockType) {
     setBlockType(blockType);
     return blockNum;
 }
+
+void BlockBuffer::releaseBlock() {
+    int blockNum = this->blockNum;
+    // If it is already released or invalidated, Eat 5 star - do nothing
+    if(blockNum == INVALID_BLOCKNUM || StaticBuffer::blockAllocMap[blockNum]==UNUSED_BLK) {
+        return;
+    }
+
+    int bufferNum = StaticBuffer::getBufferNum(blockNum);
+    // if block is present in buffer, mark it free in metainfo (not tableMetaInfo - this is for metadata cache)
+    if(bufferNum != E_BLOCKNOTINBUFFER && bufferNum != E_OUTOFBOUND) {
+        StaticBuffer::metainfo[bufferNum].free = true;
+    }
+    
+    // mark it as unused block in block allocation map
+    // make its block number invalid
+    StaticBuffer::blockAllocMap[blockNum] = UNUSED_BLK;
+    this->blockNum = INVALID_BLOCKNUM;
+
+}
