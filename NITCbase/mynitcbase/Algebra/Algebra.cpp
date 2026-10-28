@@ -92,6 +92,9 @@ int Algebra::select(char srcRel[ATTR_SIZE], char targetRel[ATTR_SIZE], char attr
     RelCacheTable::resetSearchIndex(srcRelId);
     AttrCacheTable::resetSearchIndex(srcRelId, attr);
 
+    // reset comparison counter before selection
+    resetComparisonCount();
+
     //task: repeatedly call BlockAccess::Search function till no records left
     while(BlockAccess::search(srcRelId, record, attr, attrVal, op)==SUCCESS) {
         
@@ -103,6 +106,8 @@ int Algebra::select(char srcRel[ATTR_SIZE], char targetRel[ATTR_SIZE], char attr
             return ret;
         }
     }
+
+    printf("Total comparisons: %d\n", getComparisonCount());
 
     ret = Schema::closeRel(targetRel);
     if(ret != SUCCESS) {

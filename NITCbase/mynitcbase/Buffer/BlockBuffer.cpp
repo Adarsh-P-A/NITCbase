@@ -185,7 +185,10 @@ int RecBuffer::setSlotMap(unsigned char *slotMap) {
 
 
 // compare two attributes and return -1, 0 or 1
+static int g_comparisonCount = 0;
+
 int compareAttrs(union Attribute attr1, union Attribute attr2, int attrType) {
+    g_comparisonCount++;
     double diff;
     if(attrType == STRING) {
         diff = strcmp(attr1.sVal, attr2.sVal);
@@ -200,6 +203,14 @@ int compareAttrs(union Attribute attr1, union Attribute attr2, int attrType) {
         { return 1;}
     else 
         { return 0;}
+}
+
+int getComparisonCount() {
+    return g_comparisonCount;
+}
+
+void resetComparisonCount() {
+    g_comparisonCount = 0;
 }
 
 int RecBuffer::setRecord(union Attribute *rec, int slotNum) {
