@@ -90,7 +90,7 @@ int Algebra::select(char srcRel[ATTR_SIZE], char targetRel[ATTR_SIZE], char attr
 
     // first of all, reset the searchIndex
     RelCacheTable::resetSearchIndex(srcRelId);
-    //AttrCacheTable::resetSearchIndex(srcRelId, attr); not needed now
+    AttrCacheTable::resetSearchIndex(srcRelId, attr);
 
     //task: repeatedly call BlockAccess::Search function till no records left
     while(BlockAccess::search(srcRelId, record, attr, attrVal, op)==SUCCESS) {
@@ -104,9 +104,11 @@ int Algebra::select(char srcRel[ATTR_SIZE], char targetRel[ATTR_SIZE], char attr
         }
     }
 
-    Schema::closeRel(targetRel);
+    ret = Schema::closeRel(targetRel);
+    if(ret != SUCCESS) {
+        return ret;
+    }
     return SUCCESS;
-
 }
 
 int Algebra::insert(char relName[ATTR_SIZE], int nAttrs, char record[][ATTR_SIZE]) {

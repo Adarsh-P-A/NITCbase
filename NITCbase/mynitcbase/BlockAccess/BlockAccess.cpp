@@ -364,22 +364,31 @@ int BlockAccess::insert(int relId, Attribute *record) {
 }
 
 int BlockAccess::search(int relId, Attribute *record, char attrName[ATTR_SIZE], Attribute attrVal, int op) {
-    // this function is like a cover for linearSearch to return a record instead of recId
     RecId recId;
-    recId = BlockAccess::linearSearch(relId, attrName, attrVal, op);
-
-    if(recId.block==-1 && recId.block==-1) {
-        return E_NOTFOUND;
-    }
-
-    //instantiate a Recbuffer object and use it to get record into record variable
-    RecBuffer recBuffer(recId.block);
-
-    int ret = recBuffer.getRecord(record, recId.slot);
+    AttrCatEntry attrCatEntry;
+    int ret = AttrCacheTable::getAttrCatEntry(relId, attrName, &attrCatEntry);
 
     if(ret != SUCCESS) {
         return ret;
     }
+
+    // get rootblock from attribute catalog entry
+    int rootBlock = attrCatEntry.rootBlock;
+
+    if(rootBlock == -1) {
+        // not indexed
+        recId = BlockAccess::linearSearch(relId, attrName, attrVal, op);
+    }
+    else {
+        recId = BPlusTree::bPlusSearch(relId, attrName, attrVal, op);
+    }
+    
+    if(recId.block == -1 && recId.slot == -1) {
+        return E_NOTFOUND;
+    }
+
+    RecBuffer recBuffer(recId.block);
+    recBuffer.getRecord(record, recId.slot);
 
     return SUCCESS;
 }
