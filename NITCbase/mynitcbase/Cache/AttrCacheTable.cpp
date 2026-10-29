@@ -146,3 +146,73 @@ int AttrCacheTable::resetSearchIndex(int relId, int attrOffset) {
     IndexId searchIndex = {-1,-1};
     return AttrCacheTable::setSearchIndex(relId, attrOffset,&searchIndex);
 }
+
+int AttrCacheTable::setAttrCatEntry(int relId, int attrOffset, AttrCatEntry *attrCatBuf)
+{
+    //check bounds of relId
+    if (relId < 0 || relId >= MAX_OPEN)
+        return E_OUTOFBOUND;
+
+    //check if the relation is open
+    if (attrCache[relId] == nullptr)
+        return E_RELNOTOPEN;
+
+    // traverse the linked list of attribute cache entries
+    for (AttrCacheEntry *entry = attrCache[relId]; entry != nullptr; entry = entry->next)
+    {
+        if (entry->attrCatEntry.offset == attrOffset)
+        {
+            // copy entry->attrCatEntry to *attrCatBuf and return SUCCESS;
+            strcpy(entry->attrCatEntry.relName, attrCatBuf->relName);
+            strcpy(entry->attrCatEntry.attrName, attrCatBuf->attrName);
+
+            entry->attrCatEntry.attrType = attrCatBuf->attrType;
+            entry->attrCatEntry.primaryFlag = attrCatBuf->primaryFlag;
+            entry->attrCatEntry.rootBlock = attrCatBuf->rootBlock;
+            entry->attrCatEntry.offset = attrCatBuf->offset;
+
+            entry->dirty = true;
+
+            return SUCCESS;
+        }
+    }
+
+    // if there was not attribute at that offset
+    return E_ATTRNOTEXIST;
+}
+
+int AttrCacheTable::setAttrCatEntry(int relId, char attrName[ATTR_SIZE], AttrCatEntry *attrCatBuf)
+{
+    // check bounds
+    if (relId < 0 || relId >= MAX_OPEN)
+        return E_OUTOFBOUND;
+
+    // check if the relation is open
+    if (attrCache[relId] == nullptr)
+        return E_RELNOTOPEN;
+
+    // iterate over the entries in the attribute cache and set attrCatBuf to the entry that matches attrName
+    for (AttrCacheEntry *entry = attrCache[relId]; entry != nullptr; entry = entry->next)
+    {
+        if (strcmp(entry->attrCatEntry.attrName, attrName) == 0) // matching the name
+        {
+            // copy entry->attrCatEntry to *attrCatBuf and return SUCCESS;
+            strcpy(entry->attrCatEntry.relName, attrCatBuf->relName);
+            strcpy(entry->attrCatEntry.attrName, attrCatBuf->attrName);
+
+            entry->attrCatEntry.attrType = attrCatBuf->attrType;
+            entry->attrCatEntry.primaryFlag = attrCatBuf->primaryFlag;
+            entry->attrCatEntry.rootBlock = attrCatBuf->rootBlock;
+            entry->attrCatEntry.offset = attrCatBuf->offset;
+
+            entry->dirty = true;
+
+            return SUCCESS;
+        }
+    }
+
+
+    // if there was not attribute at that offset
+    return E_ATTRNOTEXIST;
+}
+

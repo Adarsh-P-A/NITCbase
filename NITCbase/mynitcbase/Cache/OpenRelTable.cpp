@@ -323,21 +323,38 @@ int OpenRelTable::closeRel(int relId) {
         RelCacheTable::relCache[relId] = nullptr;
     }
 
+    // write back the attribute cache entries
+    AttrCacheEntry *head = AttrCacheTable::attrCache[relId];
+	AttrCacheEntry *next = head->next;
 
-    // release memory allocated for each node in the attr cache linked list
-    AttrCacheEntry *current = AttrCacheTable::attrCache[relId];
-    AttrCacheEntry *next = nullptr;
-    
-    while(current) {
-        next = current->next;
-        delete current;
-        current = next;
-    }
+	while (true) {
+		if (head->dirty)
+		{
+			Attribute attrCatRecord [ATTRCAT_NO_ATTRS];
+			AttrCacheTable::attrCatEntryToRecord(&(head->attrCatEntry), attrCatRecord);
 
-    AttrCacheTable::attrCache[relId] = nullptr;
-    
-    // this relId can be used for other relations in future, so free it
-    tableMetaInfo[relId].free = true;
+			RecBuffer attrCatBlockBuffer (head->recId.block);
+			attrCatBlockBuffer.setRecord(attrCatRecord, head->recId.slot);
+		}
+
+
+		free (head);
+		head = next;
+
+		if (head == NULL) break;
+		next = next->next;
+	}
+
+	// update `tableMetaInfo` to set `relId` as a free slot
+	// update `relCache` and `attrCache` to set the entry at `relId` to nullptr
+	tableMetaInfo[relId].free = true;
+	RelCacheTable::relCache[relId] = nullptr;
+	AttrCacheTable::attrCache[relId] = nullptr;
 
     return SUCCESS;
 }
+
+
+
+
+

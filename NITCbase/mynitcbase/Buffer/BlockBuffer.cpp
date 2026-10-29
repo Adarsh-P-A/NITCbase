@@ -9,7 +9,10 @@
 BlockBuffer::BlockBuffer(char blockType) {
     // Allocate a new block of given type. On success blockNum = new block,
     // on failure blockNum = error code. Caller must check getBlockNum().
-    this->blockNum = BlockBuffer::getFreeBlock(blockType);
+    int blkType = REC;
+    if(blockType == 'L') blkType = IND_LEAF;
+    if(blockType == 'I') blkType = IND_INTERNAL;
+    this->blockNum = BlockBuffer::getFreeBlock(blkType);
 }
 
 // constructor 2
@@ -54,6 +57,8 @@ int BlockBuffer::getHeader(struct HeadInfo *head) {
     }
 
     // populate the entries in HeadInfo
+    memcpy(&head->blockType, bufferPtr + 0, 4);
+    memcpy(&head->pblock,    bufferPtr + 4, 4);
     memcpy(&head->lblock, bufferPtr + 8, 4);
     memcpy(&head->rblock, bufferPtr + 12, 4);
     memcpy(&head->numEntries, bufferPtr + 16, 4);
@@ -380,10 +385,46 @@ int IndLeaf::getEntry(void *ptr, int indexNum) {
     return SUCCESS;
 }
 
-int IndInternal::setEntry(void *ptr, int indexNum){
-    return 0;
+int IndInternal::setEntry(void *ptr, int indexNum) {
+	
+    // check the bound of indexNum
+	if (indexNum < 0 || indexNum >= MAX_KEYS_INTERNAL)
+        return E_OUTOFBOUND;
+
+    unsigned char *bufferPtr;
+    // get the starting address of the buffer containing the block
+	int ret = loadBlockAndGetBufferPtr(&bufferPtr);
+
+	if (ret != SUCCESS) return ret;
+
+    // typecast the void pointer to an internal entry pointer
+    struct InternalEntry *internalEntry = (struct InternalEntry *)ptr;
+    
+    // calculate the position of this entry inside block
+	unsigned char *entryPtr = bufferPtr + HEADER_SIZE + (indexNum * 20);
+
+    memcpy(entryPtr, &(internalEntry->lChild), sizeof(int32_t));
+    memcpy(entryPtr + 4, &(internalEntry->attrVal), sizeof(Attribute));
+    memcpy(entryPtr + 20, &(internalEntry->rChild), sizeof(int32_t));
+
+    return SUCCESS;
 }
 
 int IndLeaf::setEntry(void *ptr, int indexNum) {
-    return 0;
+  	
+    // check the bound of indexNum
+	if (indexNum < 0 || indexNum >= MAX_KEYS_LEAF) return E_OUTOFBOUND;
+
+    unsigned char *bufferPtr;
+    // get the starting address of the buffer containing the block
+	int ret = loadBlockAndGetBufferPtr(&bufferPtr);
+
+	if (ret != SUCCESS) return ret;
+
+    // calculate the position of this entry inside block
+	unsigned char *entryPtr = bufferPtr + HEADER_SIZE + (indexNum * LEAF_ENTRY_SIZE);
+    
+    memcpy(entryPtr, (struct Index *)ptr, LEAF_ENTRY_SIZE);
+
+    return SUCCESS;
 }

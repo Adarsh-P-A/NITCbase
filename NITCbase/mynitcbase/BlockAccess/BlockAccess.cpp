@@ -360,6 +360,37 @@ int BlockAccess::insert(int relId, Attribute *record) {
     relCatBuf.numRecs++;
     RelCacheTable::setRelCatEntry(relId, &relCatBuf);
 
+    /* B+ Tree Insertions */
+    // (the following section is only relevant once indexing has been implemented)
+
+    int flag = SUCCESS;
+    // Iterate over all the attributes of the relation
+    // (let attrOffset be iterator ranging from 0 to numOfAttributes-1)
+	for (int attrindex = 0; attrindex < numOfAttributes; attrindex++)
+    {
+        // get the attribute catalog entry for the attribute from the attribute cache
+        // (use AttrCacheTable::getAttrCatEntry() with args relId and attrOffset)
+		AttrCatEntry attrCatEntryBuffer;
+		AttrCacheTable::getAttrCatEntry(relId, attrindex, &attrCatEntryBuffer);
+
+        // get the root block field from the attribute catalog entry
+		int rootBlock = attrCatEntryBuffer.rootBlock;
+
+        // if index exists for the attribute(i.e. rootBlock != -1)
+		if (rootBlock != -1)
+        {
+            /* insert the new record into the attribute's bplus tree using
+             BPlusTree::bPlusInsert()*/
+            int ret = BPlusTree::bPlusInsert(relId, attrCatEntryBuffer.attrName,
+                                                record[attrindex], rec_id);
+
+            if (ret == E_DISKFULL) {
+                //(index for this attribute has been destroyed)
+                flag = E_INDEX_BLOCKS_RELEASED;
+            }
+        }
+    }
+
     return SUCCESS;
 }
 
@@ -512,13 +543,12 @@ int BlockAccess::deleteRelation(char relName[ATTR_SIZE]) {
             recBuffer.releaseBlock();
         }
 
-        /*
-        // (the following part is only relevant once indexing has been implemented)
+         // (the following part is only relevant once indexing has been implemented)
         // if index exists for the attribute (rootBlock != -1), call bplus destroy
         if (rootBlock != -1) {
             // delete the bplus tree rooted at rootBlock using BPlusTree::bPlusDestroy()
+			BPlusTree::bPlusDestroy(rootBlock);
         }
-		*/
     }
 
     // Now delete the entries of this relation from relation catalog

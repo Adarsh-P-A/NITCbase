@@ -151,3 +151,56 @@ int Schema::deleteRel(char relName[]) {
        if the BlockBuffer was initialized with an invalid block number.
     */
 }
+
+int Schema::createIndex(char relName[ATTR_SIZE],char attrName[ATTR_SIZE]){
+    // sorry bro we cannot create index for Relation catalog and attribute catalog
+    if (strcmp(relName, RELCAT_RELNAME) == 0 || strcmp(relName, ATTRCAT_RELNAME) == 0)
+        return E_NOTPERMITTED;
+
+    // get the relation's rel-id using OpenRelTable::getRelId() method
+    int relId = OpenRelTable::getRelId(relName);
+
+    // if relation is not open in open relation table, return E_RELNOTOPEN
+    if (relId == E_RELNOTOPEN)
+        return E_RELNOTOPEN;
+
+    // create a bplus tree using BPlusTree::bPlusCreate() and return the value
+    return BPlusTree::bPlusCreate(relId, attrName);
+}
+
+int Schema::dropIndex(char *relName, char *attrName) {
+   
+    // dont touch internal system tables
+    if (strcmp(relName, RELCAT_RELNAME) == 0 || strcmp(relName, ATTRCAT_RELNAME) == 0)
+        return E_NOTPERMITTED;
+
+    // get the rel-id using OpenRelTable::getRelId()
+    int relId = OpenRelTable::getRelId(relName);
+
+    // if relation is not open in open relation table, return E_RELNOTOPEN
+    if (relId == E_RELNOTOPEN)
+        return E_RELNOTOPEN;
+
+    // get the attribute catalog entry corresponding to the attribute
+    AttrCatEntry attrCatEntryBuffer;
+
+    // if getAttrCatEntry() fails, return E_ATTRNOTEXIST
+    if(AttrCacheTable::getAttrCatEntry(relId, attrName, &attrCatEntryBuffer) != SUCCESS)
+        return E_ATTRNOTEXIST;
+
+    int rootBlock = attrCatEntryBuffer.rootBlock;
+
+    // if (/* attribute does not have an index (rootBlock = -1) */) 
+    if (rootBlock == -1)
+        return E_NOINDEX;
+
+    // destroy the bplus tree rooted at rootBlock using BPlusTree::bPlusDestroy()
+    BPlusTree::bPlusDestroy(rootBlock);
+
+    // set rootBlock = -1 in the attribute cache entry of the attribute using
+    // AttrCacheTable::setAttrCatEntry()
+    attrCatEntryBuffer.rootBlock = -1;
+    AttrCacheTable::setAttrCatEntry(relId, attrName, &attrCatEntryBuffer);
+
+    return SUCCESS;
+}
